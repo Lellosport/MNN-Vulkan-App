@@ -23,10 +23,9 @@ int main(int argc, char* argv[]) {
     // 2. Configurazione di Vulkan per le massime prestazioni
     MNN::ScheduleConfig config;
     config.type = MNN_FORWARD_VULKAN;
-    config.numThread = 4; // Thread della CPU di supporto
+    config.numThread = 4;
     
     MNN::BackendConfig backendConfig;
-    // Usiamo la precisione mista o alta a seconda del supporto della GPU mobile
     backendConfig.precision = MNN::BackendConfig::Precision_High;
     config.backendConfig = &backendConfig;
 
@@ -39,16 +38,14 @@ int main(int argc, char* argv[]) {
 
     std::cout << "SUCCESSO: Modello caricato e sessione Vulkan avviata!" << std::endl;
 
-    // 4. Recupero dei tensori di input e output
+    // 4. Recupero dei tensori di input
     MNN::Tensor* inputTensor = interpreter->getSessionInput(session, nullptr);
-    
-    // Eseguiamo un dimensionamento o un controllo preliminare
     std::cout << "Dimensioni input tensor pronte per l'elaborazione." << std::endl;
 
-    // 5. Test di inferenza rapida
+    // 5. Test di inferenza rapida con namespace corretto
     auto start = std::chrono::high_resolution_clock::now();
     
-    ErrorCode status = interpreter->runSession(session);
+    MNN::ErrorCode status = interpreter->runSession(session);
     
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> elapsed = end - start;
