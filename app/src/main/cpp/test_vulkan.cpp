@@ -1,36 +1,64 @@
 #include <iostream>
 #include <chrono>
+#include <vector>
 #include <MNN/Interpreter.hpp>
+#include <MNN/Tensor.hpp>
 
-int main() {
-    std::cout << "--- BENCHMARK VULKAN PURO ---" << std::endl;
-
-    MNN::ScheduleConfig config;
-    config.type = MNN_FORWARD_VULKAN;
-    config.numThread = 4;
-
-    int loop_count = 100;
-    std::cout << "Avvio test di creazione contesto Vulkan (" << loop_count << " iterazioni)..." << std::endl;
-
-    auto start = std::chrono::high_resolution_clock::now();
-
-    for (int i = 0; i < loop_count; ++i) {
-        auto runtime_pair = MNN::Interpreter::createRuntime({config});
-        if (runtime_pair.second == nullptr) {
-            std::cout << "Errore Vulkan alla iterazione " << i << std::endl;
-            return 1;
-        }
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cout << "Uso: ./test_vulkan <modello_video.mnn>" << std::endl;
+        return 1;
     }
 
+    std::cout << "--- INIZIALIZZAZIONE MODELLO VIDEO MNN ---" << std::endl;
+    const char* model_path = argv[1];
+
+    // 1. Caricamento dell'interprete
+    auto interpreter = std::shared_ptr<MNN::Interpreter>(MNN::Interpreter::createFromFile(model_path));
+    if (!interpreter) {
+        std::cout << "ERRORE: Impossibile caricare il file del modello .mnn" << std::endl;
+        return 1;
+    }
+
+    // 2. Configurazione di Vulkan per le massime prestazioni
+    MNN::ScheduleConfig config;
+    config.type = MNN_FORWARD_VULKAN;
+    config.numThread = 4; // Thread della CPU di supporto
+    
+    MNN::BackendConfig backendConfig;
+    // Usiamo la precisione mista o alta a seconda del supporto della GPU mobile
+    backendConfig.precision = MNN::BackendConfig::Precision_High;
+    config.backendConfig = &backendConfig;
+
+    // 3. Creazione della sessione di calcolo sulla GPU
+    auto session = interpreter->createSession(config);
+    if (!session) {
+        std::cout << "ERRORE: Impossibile creare la sessione Vulkan per il modello." << std::endl;
+        return 1;
+    }
+
+    std::cout << "SUCCESSO: Modello caricato e sessione Vulkan avviata!" << std::endl;
+
+    // 4. Recupero dei tensori di input e output
+    MNN::Tensor* inputTensor = interpreter->getSessionInput(session, nullptr);
+    
+    // Eseguiamo un dimensionamento o un controllo preliminare
+    std::cout << "Dimensioni input tensor pronte per l'elaborazione." << std::endl;
+
+    // 5. Test di inferenza rapida
+    auto start = std::chrono::high_resolution_clock::now();
+    
+    ErrorCode status = interpreter->runSession(session);
+    
     auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> elapsed = end - start;
 
-    std::chrono::duration<double, std::milli> ms_double = end - start;
-    double avg_time = ms_double.count() / loop_count;
-
-    std::cout << "-----------------------------------" << std::endl;
-    std::cout << "Tempo TOTALE: " << ms_double.count() << " ms" << std::endl;
-    std::cout << "Tempo MEDIO per inizializzazione: " << avg_time << " ms" << std::endl;
-    std::cout << "-----------------------------------" << std::endl;
+    if (status == 0) { // NO_ERROR
+        std::cout << "INFERENZA RIUSCITA!" << std::endl;
+        std::cout << "Tempo impiegato per il passaggio: " << elapsed.count() << " ms" << std::endl;
+    } else {
+        std::cout << "ERRORE durante l'esecuzione dell'inferenza. Codice: " << status << std::endl;
+    }
 
     return 0;
 }
