@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ottieni il codice
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Estrai i file Header
         run: |
@@ -29,7 +29,7 @@ jobs:
           make
 
       - name: Salva il file generato
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: test_vulkan_eseguibile
           path: build/test_vulkan
