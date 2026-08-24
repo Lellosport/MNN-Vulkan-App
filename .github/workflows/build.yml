@@ -1,0 +1,36 @@
+name: Build MNN Vulkan Test
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ottieni il codice
+        uses: actions/checkout@v3
+
+      - name: Estrai i file Header
+        run: |
+          tar -xvf include.tar -C app/src/main/cpp/
+
+      - name: Prepara Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r25c
+
+      - name: Compila il C++
+        run: |
+          mkdir build && cd build
+          cmake -DCMAKE_TOOLCHAIN_FILE=${{ steps.setup-ndk.outputs.ndk-path }}/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-28 ../app/src/main/cpp
+          make
+
+      - name: Salva il file generato
+        uses: actions/upload-artifact@v3
+        with:
+          name: test_vulkan_eseguibile
+          path: build/test_vulkan
+          
